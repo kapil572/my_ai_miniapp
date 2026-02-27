@@ -4,58 +4,58 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
 
-# 1. Expanded Dataset (More data = better accuracy)
+# 1. SIMPLE DATASET (100 Happy / 100 Sad)
+# I used very basic words so the AI understands perfectly.
+happy_words = [
+    "good", "great", "wow", "love", "best", "nice", "happy", "cool", "amazing", "perfect",
+    "awesome", "fun", "wonderful", "brilliant", "excellent", "fantastic", "super", "lovely", "glad", "best movie",
+    "must watch", "loved it", "so good", "very nice", "enjoyed it", "masterpiece", "beautiful", "smart", "classic", "top",
+    "favorite", "sweet", "cool film", "great acting", "liked it", "five stars", "winner", "gem", "inspiring", "bright",
+    "happy ending", "great story", "pretty", "funny", "charming", "impressive", "smooth", "bold", "superb", "magic"
+] * 4  # This repeats the list to reach 200 total samples easily
+
+sad_words = [
+    "bad", "worse", "hate", "worst", "sad", "boring", "slow", "terrible", "angry", "waste",
+    "poor", "awful", "ugly", "horrible", "lazy", "dumb", "no", "never", "avoid", "garbage",
+    "trash", "annoying", "cheap", "bad movie", "hated it", "not good", "don't watch", "so bad", "failed", "broken",
+    "painful", "dull", "lame", "weak", "mess", "disaster", "stupid", "pointless", "zero stars", "gross",
+    "cringe", "bad acting", "boring plot", "waste of time", "unhappy", "awful film", "rubbish", "silly", "wrong", "dry"
+] * 4 
+
+# Create the data table
 data = {
-    'text': [
-        "I love this movie", "Great acting and plot", "A masterpiece", "Amazing experience",
-        "Worst movie ever", "I hated the plot", "Waste of time", "Terrible acting",
-        "It was okay, not great", "Boring and slow", "Simply brilliant", "Highly recommended",
-        "Not my cup of tea", "A total disaster", "One of the best", "Poor quality"
-    ],
-    'label': [1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0]
+    'text': happy_words + sad_words,
+    'label': [1]*200 + [0]*200 # 1 = Positive, 0 = Negative
 }
 df = pd.DataFrame(data)
 
-# 2. Advanced Model Pipeline
-# ngram_range=(1,2) lets the model see single words AND pairs of words.
-model_pipeline = Pipeline([
-    ('tfidf', TfidfVectorizer(stop_words='english', ngram_range=(1, 2))),
+# 2. THE AI BRAIN (The Pipeline)
+# TF-IDF turns words into numbers. LogisticRegression is the judge.
+model = Pipeline([
+    ('tfidf', TfidfVectorizer()),
     ('classifier', LogisticRegression())
 ])
 
-# Train the model
-model_pipeline.fit(df['text'], df['label'])
+# Train the AI
+model.fit(df['text'], df['label'])
 
-# 3. Enhanced UI
-st.set_page_config(page_title="Sentiment Pro", page_icon="🧠")
-st.title("🧠 Advanced Sentiment Analyzer")
-st.markdown("---")
+# 3. THE WEBSITE INTERFACE
+st.set_page_config(page_title="Easy Sentiment")
+st.title("🎬 Simple Movie Review AI")
+st.write("Is your review Happy or Sad? Type it below!")
 
-col1, col2 = st.columns([2, 1])
+# User types here
+user_input = st.text_input("Enter your review:", "This movie was great")
 
-with col1:
-    user_text = st.text_area("Enter a detailed review:", placeholder="e.g., The acting was great but the plot was a bit slow...")
+if st.button("Check Now"):
+    # The AI makes a guess
+    prediction = model.predict([user_input])[0]
     
-with col2:
-    st.write("### Stats")
-    st.write(f"**Training Samples:** {len(df)}")
-    st.write("**Model:** Logistic Regression")
-
-if st.button("Analyze Sentiment", use_container_width=True):
-    if user_text.strip():
-        # Predict class and probability
-        prediction = model_pipeline.predict([user_text])[0]
-        proba = model_pipeline.predict_proba([user_text])[0]
-        confidence = proba[1] if prediction == 1 else proba[0]
-        
-        st.markdown("---")
-        if prediction == 1:
-            st.balloons()
-            st.success(f"### Positive Sentiment (Confidence: {confidence:.2%})")
-        else:
-            st.error(f"### Negative Sentiment (Confidence: {confidence:.2%})")
-            
-        # Optional: show the "strength" of the sentiment
-        st.progress(confidence)
+    if prediction == 1:
+        st.success("The AI thinks: **HAPPY** ✨")
+        st.balloons()
     else:
-        st.warning("Please enter some text first!")
+        st.error("The AI thinks: **SAD** 📉")
+
+# Sidebar info
+st.sidebar.write(f"Total reviews learned: {len(df)}")
