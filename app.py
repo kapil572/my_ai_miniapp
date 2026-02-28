@@ -1,61 +1,67 @@
 import streamlit as st
 import pandas as pd
+from sklearn.model_selection import train_test_split
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.linear_model import LogisticRegression
+from sklearn.svm import LinearSVC
 from sklearn.pipeline import Pipeline
 
-# 1. SIMPLE DATASET (100 Happy / 100 Sad)
-# I used very basic words so the AI understands perfectly.
-happy_words = [
-    "good", "great", "wow", "love", "best", "nice", "happy", "cool", "amazing", "perfect",
-    "awesome", "fun", "wonderful", "brilliant", "excellent", "fantastic", "super", "lovely", "glad", "best movie",
-    "must watch", "loved it", "so good", "very nice", "enjoyed it", "masterpiece", "beautiful", "smart", "classic", "top",
-    "favorite", "sweet", "cool film", "great acting", "liked it", "five stars", "winner", "gem", "inspiring", "bright",
-    "happy ending", "great story", "pretty", "funny", "charming", "impressive", "smooth", "bold", "superb", "magic"
-] * 4  # This repeats the list to reach 200 total samples easily
+# --- PAGE SETUP ---
+st.set_page_config(page_title="Mental Health CSV Analyzer", layout="wide")
+st.title("🧠 Custom Mental Health Sentiment Classifier")
+st.write("Upload a dataset to train the AI on specific feelings like Happy, Sad, Anxiety, and Stress.")
 
-sad_words = [
-    "bad", "worse", "hate", "worst", "sad", "boring", "slow", "terrible", "angry", "waste",
-    "poor", "awful", "ugly", "horrible", "lazy", "dumb", "no", "never", "avoid", "garbage",
-    "trash", "annoying", "cheap", "bad movie", "hated it", "not good", "don't watch", "so bad", "failed", "broken",
-    "painful", "dull", "lame", "weak", "mess", "disaster", "stupid", "pointless", "zero stars", "gross",
-    "cringe", "bad acting", "boring plot", "waste of time", "unhappy", "awful film", "rubbish", "silly", "wrong", "dry"
-] * 4 
+# --- STEP 1: UPLOAD FILE ---
+st.header("/content/Combined Data.csv")
+uploaded_file = st.file_uploader("Choose a CSV file", type="csv")
 
-# Create the data table
-data = {
-    'text': happy_words + sad_words,
-    'label': [1]*200 + [0]*200 # 1 = Positive, 0 = Negative
-}
-df = pd.DataFrame(data)
+if uploaded_file is not None:
+    # Read the CSV
+    df = pd.read_csv(uploaded_file)
 
-# 2. THE AI BRAIN (The Pipeline)
-# TF-IDF turns words into numbers. LogisticRegression is the judge.
-model = Pipeline([
-    ('tfidf', TfidfVectorizer()),
-    ('classifier', LogisticRegression())
-])
+    st.subheader("Data Preview")
+    st.write(df.head())
 
-# Train the AI
-model.fit(df['text'], df['label'])
+    # --- STEP 2: COLUMN MAPPING ---
+    # This allows you to select which columns are the "Text" and the "Label"
+    st.header("2. Configure Columns")
+    col1, col2 = st.columns(2)
 
-# 3. THE WEBSITE INTERFACE
-st.set_page_config(page_title="Easy Sentiment")
-st.title("🎬 Simple Movie Review AI")
-st.write("Is your review Happy or Sad? Type it below!")
+    with col1:
+        text_col = st.selectbox("Select the column containing the SENTENCES:", df.columns)
+    with col2:
+        label_col = st.selectbox("Select the column containing the FEELINGS (Labels):", df.columns)
 
-# User types here
-user_input = st.text_input("Enter your review:", "This movie was great")
+    # --- STEP 3: TRAINING ---
+    if st.button("🚀 Train Model Now"):
+        with st.spinner("Processing text and training..."):
+            # Prepare data
+            X = df[text_col].astype(str)
+            y = df[label_col]
 
-if st.button("Check Now"):
-    # The AI makes a guess
-    prediction = model.predict([user_input])[0]
-    
-    if prediction == 1:
-        st.success("The AI thinks: **HAPPY** ✨")
-        st.balloons()
-    else:
-        st.error("The AI thinks: **SAD** 📉")
+            # Build the Machine Learning Pipeline
+            # Tfidf turns words into numbers; LinearSVC classifies them
+            model = Pipeline([
+                ('tfidf', TfidfVectorizer(stop_words='english')),
+                ('clf', LinearSVC())
+            ])
 
-# Sidebar info
-st.sidebar.write(f"Total reviews learned: {len(df)}")
+            model.fit(X, y)
+
+            # Save model to session state so it stays active
+            st.session_state['custom_model'] = model
+            st.success("Training complete! Your AI is now ready.")
+
+    # --- STEP 4: PREDICTION ---
+    if 'custom_model' in st.session_state:
+        st.divider()
+        st.header("3. Test Your Custom AI")
+        user_input = st.text_input("Type how you are feeling to see what the AI thinks:")
+
+        if user_input:
+            prediction = st.session_state['custom_model'].predict([user_input])[0]
+
+            # Display result with a bit of flair
+            st.info(f"Analysis Result: **{prediction.upper()}**")
+
+else:
+    st.info("Please upload a CSV file to get started. You can use the one we created earlier!")
