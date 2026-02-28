@@ -14,7 +14,7 @@ def clean_text(text):
 # 2. Build and Train Model
 @st.cache_resource
 def train_model():
-    df = pd.read_csv("mental_health.csv")
+    df = pd.read_csv("mental_health_dataset.csv")
     df['cleaned_text'] = df['text'].apply(clean_text)
     
     # Pipeline: TF-IDF + Logistic Regression
