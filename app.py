@@ -7,6 +7,8 @@ from sklearn.pipeline import Pipeline
 
 # 1. Preprocessing Function
 def clean_text(text):
+    if not isinstance(text, str):
+        return ""
     text = text.lower() # Lowercasing
     text = re.sub(r'[^\w\s]', '', text) # Remove punctuation
     return text
@@ -14,40 +16,69 @@ def clean_text(text):
 # 2. Build and Train Model
 @st.cache_resource
 def train_model():
+    # Ensure the file is in your GitHub repo root
     df = pd.read_csv("mental_health_dataset.csv")
-    # Print columns to debug KeyError
-    print("DataFrame columns:", df.columns)
-    df['cleaned_text'] = df['Mood_Description'].apply(clean_text) # Changed 'text' to 'Mood_Description'
+    
+    # Preprocessing the dataset
+    df['cleaned_text'] = df['Mood_Description'].apply(clean_text)
 
     # Pipeline: TF-IDF + Logistic Regression
     model = Pipeline([
         ('tfidf', TfidfVectorizer(stop_words='english')),
         ('clf', LogisticRegression())
     ])
-    model.fit(df['cleaned_text'], df['Mental_Health_Status']) # Assuming 'Mental_Health_Status' is the label column
+    
+    # Training on your specific columns
+    model.fit(df['cleaned_text'], df['Mental_Health_Status'])
     return model
 
 # 3. Streamlit Interface
 st.set_page_config(page_title="Mental Health AI", page_icon="🧠")
 st.title("🧠 Mental Health Sentiment Detector")
-st.write("Enter how you feel to identify your current emotional state.")
+st.write("Identify your current emotional state using NLP.")
 
-model = train_model()
+# Initialize Model
+try:
+    model = train_model()
+except FileNotFoundError:
+    st.error("Error: 'mental_health_dataset.csv' not found. Please ensure it is uploaded to GitHub.")
+    st.stop()
 
 user_input = st.text_area("Your Thoughts:", placeholder="I've been feeling really overwhelmed lately...")
 
+# 4. Feelings Mapping (Ensuring words are clear)
+# Adjust these keys to match exactly what is in your CSV 'Mental_Health_Status' column
+feeling_map = {
+    "Happy": "Happy and Positive",
+    "Sad": "Sad or Low Mood",
+    "Anxiety": "Anxious or Panicked",
+    "Stress": "Stressed and Overwhelmed",
+    "Normal": "Stable and Calm"
+}
+
 if st.button("Analyze Sentiment"):
     if user_input:
-        prediction = model.predict([clean_text(user_input)])[0]
+        # Get raw prediction from model
+        raw_prediction = model.predict([clean_text(user_input)])[0]
+        
+        # Get user-friendly words from our map
+        feeling_text = feeling_map.get(raw_prediction, raw_prediction)
 
-        # Color-coded results
-        if prediction == "Happy":
-            st.success(f"Result: {prediction} 😊")
-        elif prediction == "Sad":
-            st.error(f"Result: {prediction} 😢")
-        elif prediction == "Anxiety":
-            st.warning(f"Result: {prediction} 😨")
+        st.subheader("Analysis Results:")
+
+        # Color-coded results with words + emojis
+        if "Happy" in raw_prediction or "Normal" in raw_prediction:
+            st.success(f"**Feeling Detected:** {feeling_text} 😊")
+        elif "Sad" in raw_prediction or "Depression" in raw_prediction:
+            st.error(f"**Feeling Detected:** {feeling_text} 😢")
+        elif "Anxiety" in raw_prediction:
+            st.warning(f"**Feeling Detected:** {feeling_text} 😰")
+        elif "Stress" in raw_prediction:
+            st.info(f"**Feeling Detected:** {feeling_text} 😫")
         else:
-            st.info(f"Result: {prediction} 😫")
+            st.write(f"**Feeling Detected:** {feeling_text}")
+            
+        st.write("---")
+        st.caption("Note: This is an AI prediction for educational purposes and not a clinical diagnosis.")
     else:
         st.warning("Please enter some text first!")
