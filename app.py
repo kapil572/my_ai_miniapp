@@ -14,15 +14,17 @@ def clean_text(text):
 # 2. Build and Train Model
 @st.cache_resource
 def train_model():
-    df = pd.read_csv("mental_health_dataset.csv")
-    df['cleaned_text'] = df['text'].apply(clean_text)
-    
+    df = pd.read_csv("/content/mental_health_dataset.csv")
+    # Print columns to debug KeyError
+    print("DataFrame columns:", df.columns)
+    df['cleaned_text'] = df['Mood_Description'].apply(clean_text) # Changed 'text' to 'Mood_Description'
+
     # Pipeline: TF-IDF + Logistic Regression
     model = Pipeline([
         ('tfidf', TfidfVectorizer(stop_words='english')),
         ('clf', LogisticRegression())
     ])
-    model.fit(df['cleaned_text'], df['label'])
+    model.fit(df['cleaned_text'], df['Mental_Health_Status']) # Assuming 'Mental_Health_Status' is the label column
     return model
 
 # 3. Streamlit Interface
@@ -37,14 +39,14 @@ user_input = st.text_area("Your Thoughts:", placeholder="I've been feeling reall
 if st.button("Analyze Sentiment"):
     if user_input:
         prediction = model.predict([clean_text(user_input)])[0]
-        
+
         # Color-coded results
         if prediction == "Happy":
             st.success(f"Result: {prediction} 😊")
         elif prediction == "Sad":
             st.error(f"Result: {prediction} 😢")
         elif prediction == "Anxiety":
-            st.warning(f"Result: {prediction} 😰")
+            st.warning(f"Result: {prediction} 😨")
         else:
             st.info(f"Result: {prediction} 😫")
     else:
