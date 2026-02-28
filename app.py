@@ -11,7 +11,7 @@ st.title("🧠 Custom Mental Health Sentiment Classifier")
 st.write("Upload a dataset to train the AI on specific feelings like Happy, Sad, Anxiety, and Stress.")
 
 # --- STEP 1: UPLOAD FILE ---
-st.header("/content/Combined Data.csv")
+st.header("mental_health_dataset.csv")
 uploaded_file = st.file_uploader("Choose a CSV file", type="csv")
 
 if uploaded_file is not None:
