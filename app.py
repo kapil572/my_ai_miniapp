@@ -14,7 +14,7 @@ def clean_text(text):
 # 2. Build and Train Model
 @st.cache_resource
 def train_model():
-    df = pd.read_csv("/content/mental_health_dataset.csv")
+    df = pd.read_csv("mental_health_dataset.csv")
     # Print columns to debug KeyError
     print("DataFrame columns:", df.columns)
     df['cleaned_text'] = df['Mood_Description'].apply(clean_text) # Changed 'text' to 'Mood_Description'
