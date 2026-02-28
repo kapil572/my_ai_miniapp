@@ -1,67 +1,51 @@
 import streamlit as st
 import pandas as pd
-from sklearn.model_selection import train_test_split
+import re
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.svm import LinearSVC
+from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
 
-# --- PAGE SETUP ---
-st.set_page_config(page_title="Mental Health CSV Analyzer", layout="wide")
-st.title("🧠 Custom Mental Health Sentiment Classifier")
-st.write("Upload a dataset to train the AI on specific feelings like Happy, Sad, Anxiety, and Stress.")
+# 1. Preprocessing Function
+def clean_text(text):
+    text = text.lower() # Lowercasing
+    text = re.sub(r'[^\w\s]', '', text) # Remove punctuation
+    return text
 
-# --- STEP 1: UPLOAD FILE ---
-st.header("mental_health_dataset.csv")
-uploaded_file = st.file_uploader("Choose a CSV file", type="csv")
+# 2. Build and Train Model
+@st.cache_resource
+def train_model():
+    df = pd.read_csv("mental_health.csv")
+    df['cleaned_text'] = df['text'].apply(clean_text)
+    
+    # Pipeline: TF-IDF + Logistic Regression
+    model = Pipeline([
+        ('tfidf', TfidfVectorizer(stop_words='english')),
+        ('clf', LogisticRegression())
+    ])
+    model.fit(df['cleaned_text'], df['label'])
+    return model
 
-if uploaded_file is not None:
-    # Read the CSV
-    df = pd.read_csv(uploaded_file)
+# 3. Streamlit Interface
+st.set_page_config(page_title="Mental Health AI", page_icon="🧠")
+st.title("🧠 Mental Health Sentiment Detector")
+st.write("Enter how you feel to identify your current emotional state.")
 
-    st.subheader("Data Preview")
-    st.write(df.head())
+model = train_model()
 
-    # --- STEP 2: COLUMN MAPPING ---
-    # This allows you to select which columns are the "Text" and the "Label"
-    st.header("2. Configure Columns")
-    col1, col2 = st.columns(2)
+user_input = st.text_area("Your Thoughts:", placeholder="I've been feeling really overwhelmed lately...")
 
-    with col1:
-        text_col = st.selectbox("Select the column containing the SENTENCES:", df.columns)
-    with col2:
-        label_col = st.selectbox("Select the column containing the FEELINGS (Labels):", df.columns)
-
-    # --- STEP 3: TRAINING ---
-    if st.button("🚀 Train Model Now"):
-        with st.spinner("Processing text and training..."):
-            # Prepare data
-            X = df[text_col].astype(str)
-            y = df[label_col]
-
-            # Build the Machine Learning Pipeline
-            # Tfidf turns words into numbers; LinearSVC classifies them
-            model = Pipeline([
-                ('tfidf', TfidfVectorizer(stop_words='english')),
-                ('clf', LinearSVC())
-            ])
-
-            model.fit(X, y)
-
-            # Save model to session state so it stays active
-            st.session_state['custom_model'] = model
-            st.success("Training complete! Your AI is now ready.")
-
-    # --- STEP 4: PREDICTION ---
-    if 'custom_model' in st.session_state:
-        st.divider()
-        st.header("3. Test Your Custom AI")
-        user_input = st.text_input("Type how you are feeling to see what the AI thinks:")
-
-        if user_input:
-            prediction = st.session_state['custom_model'].predict([user_input])[0]
-
-            # Display result with a bit of flair
-            st.info(f"Analysis Result: **{prediction.upper()}**")
-
-else:
-    st.info("Please upload a CSV file to get started. You can use the one we created earlier!")
+if st.button("Analyze Sentiment"):
+    if user_input:
+        prediction = model.predict([clean_text(user_input)])[0]
+        
+        # Color-coded results
+        if prediction == "Happy":
+            st.success(f"Result: {prediction} 😊")
+        elif prediction == "Sad":
+            st.error(f"Result: {prediction} 😢")
+        elif prediction == "Anxiety":
+            st.warning(f"Result: {prediction} 😰")
+        else:
+            st.info(f"Result: {prediction} 😫")
+    else:
+        st.warning("Please enter some text first!")
